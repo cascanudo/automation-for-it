@@ -1,0 +1,22 @@
+# Carpetas que se generan al ejecutar el proyecto
+respaldos/*
+reportes/*
+estado/*
+buzon/*
+laboratorio/*
+temporal/*
+logs_prueba/*.log
+
+# Conservamos las carpetas vacias con .gitkeep
+!respaldos/.gitkeep
+!reportes/.gitkeep
+!estado/.gitkeep
+!estado/checkpoints/
+!estado/checkpoints/.gitkeep
+!buzon/.gitkeep
+!laboratorio/.gitkeep
+!temporal/.gitkeep
+!logs_prueba/.gitkeep
+
+# Archivos de estado que no deben subirse
+estado/checkpoints/*.estado
