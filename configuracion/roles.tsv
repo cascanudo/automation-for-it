@@ -1,0 +1,4 @@
+rol	grupo	carpeta_compartida	modo_directorio	descripcion
+admin	grupo_admin	compartido_admin	0770	Administra el entorno y coordina la operacion.
+operador	grupo_operadores	compartido_operaciones	0750	Ejecuta tareas diarias y revisa reportes.
+auditor	grupo_auditoria	compartido_auditoria	0750	Revisa evidencias y controla trazabilidad.

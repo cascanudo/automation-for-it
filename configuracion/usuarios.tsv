@@ -1,0 +1,5 @@
+usuario	nombre_completo	rol	shell	estado
+ana_admin	Ana Torres	admin	/bin/bash	presente
+olga_operaciones	Olga Ramos	operador	/bin/bash	presente
+alberto_auditor	Alberto Ruiz	auditor	/usr/sbin/nologin	presente
+invitado_antiguo	Invitado Antiguo	operador	/bin/bash	ausente
