@@ -1,0 +1,3 @@
+Servicio web: OK
+Base de datos: OK
+Replica: EN ESPERA

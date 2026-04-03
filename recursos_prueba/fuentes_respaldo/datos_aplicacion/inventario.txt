@@ -1,0 +1,3 @@
+nodos_api=3
+cola_trabajo=14
+ultima_sincronizacion=2026-04-09 00:27:59

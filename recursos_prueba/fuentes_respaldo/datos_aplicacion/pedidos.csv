@@ -1,0 +1,3 @@
+pedido_id,cliente,total,estado
+1001,Acme,120.50,pagado
+1002,Globex,89.90,pendiente
