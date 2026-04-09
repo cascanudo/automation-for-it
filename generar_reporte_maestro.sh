@@ -125,9 +125,9 @@ usuarios_ok=$(awk -F'\t' '$7 == "OK" { n++ } END { print n + 0 }' "$archivo_usua
     echo
 
     echo "3. Evidencia principal"
-    [[ -f "$reporte_respaldo_reciente" ]] && echo " - Reporte de respaldos: $reporte_respaldo_reciente"
-    [[ -f "$reporte_logs_reciente" ]] && echo " - Reporte de monitoreo: $reporte_logs_reciente"
-    [[ -f "$reporte_usuarios_reciente" ]] && echo " - Reporte de usuarios: $reporte_usuarios_reciente"
+    [[ -f "$reporte_respaldo_reciente" ]] && echo " - Reporte de respaldos: $(ruta_corta "$reporte_respaldo_reciente")"
+    [[ -f "$reporte_logs_reciente" ]] && echo " - Reporte de monitoreo: $(ruta_corta "$reporte_logs_reciente")"
+    [[ -f "$reporte_usuarios_reciente" ]] && echo " - Reporte de usuarios: $(ruta_corta "$reporte_usuarios_reciente")"
     echo
 
     echo "4. Comentario final"
@@ -152,11 +152,11 @@ if es_verdadero "$crear_bundle"; then
     [[ -f "$reporte_usuarios_reciente" ]] && elementos_bundle+=("reportes/$(basename "$reporte_usuarios_reciente")")
     tar -czf "$archivo_bundle" -C "$RAIZ_PROYECTO" "${elementos_bundle[@]}"
     echo >> "$archivo_maestro"
-    imprimir_dato "Paquete maestro" "$archivo_bundle" >> "$archivo_maestro"
+    imprimir_dato "Paquete maestro" "$(ruta_corta "$archivo_bundle")" >> "$archivo_maestro"
 fi
 
 echo >> "$archivo_maestro"
-imprimir_dato "Registro de envio" "$archivo_envio" >> "$archivo_maestro"
+imprimir_dato "Registro de envio" "$(ruta_corta "$archivo_envio")" >> "$archivo_maestro"
 
 cp "$archivo_maestro" "$archivo_maestro_reciente"
 cat "$archivo_maestro"

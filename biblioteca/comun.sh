@@ -74,6 +74,22 @@ normalizar_ruta() {
     printf '%s' "$ruta"
 }
 
+# Muestra la ruta relativa al proyecto para que la salida sea mas corta y legible.
+ruta_corta() {
+    local ruta=$1
+    echo "$ruta" | sed "s|$RAIZ_PROYECTO/||g; s|$RAIZ_PROYECTO||g"
+}
+
+# Imprime un banner grande para separar visualmente cada modulo en la salida.
+imprimir_banner() {
+    local titulo=$1
+    echo ""
+    echo "************************************************************"
+    echo "  $titulo"
+    echo "************************************************************"
+    echo ""
+}
+
 id_ejecucion() {
     date "+%Y%m%d_%H%M%S"
 }
