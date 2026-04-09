@@ -107,5 +107,5 @@ case "$escenario" in
 esac
 
 registrar_info "Escenario cargado: $escenario"
-imprimir_dato "Log de aplicacion" "$archivo_app"
-imprimir_dato "Log de autenticacion" "$archivo_auth"
+imprimir_dato "Log de aplicacion" "$(ruta_corta "$archivo_app")"
+imprimir_dato "Log de autenticacion" "$(ruta_corta "$archivo_auth")"

@@ -95,4 +95,9 @@ Replica: EN ESPERA
 EOF
 
 bash "$CARPETA_SCRIPT/simular_logs.sh" --config "$archivo_config" --escenario "$escenario" --reset
+
 registrar_info "Entorno de prueba preparado con el escenario $escenario."
+imprimir_dato "Escenario cargado" "$escenario"
+imprimir_dato "Carpeta de reportes" "$(ruta_corta "$CARPETA_REPORTES")"
+imprimir_dato "Carpeta de respaldos" "$(ruta_corta "$CARPETA_RESPALDOS")"
+imprimir_dato "Carpeta de laboratorio" "$(ruta_corta "$CARPETA_LABORATORIO")"

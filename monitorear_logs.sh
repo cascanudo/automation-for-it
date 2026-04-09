@@ -100,7 +100,7 @@ revisar_fuente() {
     archivo_estado=$(archivo_checkpoint "$ruta_fuente")
 
     if [[ ! -f "$ruta_fuente" || ! -r "$ruta_fuente" ]]; then
-        registrar_advertencia "Se omite $ruta_fuente porque no existe o no tiene permisos de lectura."
+        registrar_advertencia "Se omite $(ruta_corta "$ruta_fuente") porque no existe o no tiene permisos de lectura."
         return
     fi
 
@@ -212,10 +212,10 @@ alertas_bajas=$(awk -F'\t' '$2 == "LOW" { n++ } END { print n + 0 }' "$archivo_e
     echo
     echo "Detalle por fuente:"
     if [[ -s "$archivo_ejecucion" ]]; then
-        awk -F'\t' '{ acumulado[$3]++ } END { for (fuente in acumulado) printf " - %s: %d alertas\n", fuente, acumulado[fuente] }' "$archivo_ejecucion" | sort
+        awk -F'\t' -v raiz="$RAIZ_PROYECTO/" '{ ruta=$3; gsub(raiz, "", ruta); acumulado[ruta]++ } END { for (fuente in acumulado) printf " - %s: %d alertas\n", fuente, acumulado[fuente] }' "$archivo_ejecucion" | sort
         echo
         echo "Eventos criticos detectados:"
-        awk -F'\t' '$2 == "CRITICAL" { printf " - %s | %s | %s\n", $1, $3, $6 }' "$archivo_ejecucion" | head -n 5
+        awk -F'\t' -v raiz="$RAIZ_PROYECTO/" '$2 == "CRITICAL" { ruta=$3; gsub(raiz, "", ruta); printf " - %s | %s | %s\n", $1, ruta, $6 }' "$archivo_ejecucion" | head -n 5
     else
         echo " - No se detectaron eventos en esta corrida."
     fi

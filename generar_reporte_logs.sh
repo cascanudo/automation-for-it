@@ -120,7 +120,7 @@ alertas_bajas=$(awk -F'\t' '$2 == "LOW" { n++ } END { print n + 0 }' "$archivo_f
 
     echo "2. Fuentes con mayor actividad"
     if [[ -s "$archivo_filtrado" ]]; then
-        awk -F'\t' '{ totales[$3]++ } END { for (fuente in totales) printf "%07d\t%s\n", totales[fuente], fuente }' "$archivo_filtrado" | sort -r | head -n "$maximo_detalles" | awk -F'\t' '{ printf " - %s alertas en %s\n", $1 + 0, $2 }'
+        awk -F'\t' -v raiz="$RAIZ_PROYECTO/" '{ ruta=$3; gsub(raiz, "", ruta); totales[ruta]++ } END { for (fuente in totales) printf "%07d\t%s\n", totales[fuente], fuente }' "$archivo_filtrado" | sort -r | head -n "$maximo_detalles" | awk -F'\t' '{ printf " - %s alertas en %s\n", $1 + 0, $2 }'
     else
         echo " - No hubo fuentes con actividad registrada."
     fi
@@ -136,7 +136,7 @@ alertas_bajas=$(awk -F'\t' '$2 == "LOW" { n++ } END { print n + 0 }' "$archivo_f
 
     echo "4. Evidencia critica"
     if [[ -s "$archivo_filtrado" ]]; then
-        awk -F'\t' '$2 == "CRITICAL" { printf " - %s | %s | %s\n", $1, $3, $6 }' "$archivo_filtrado" | head -n "$maximo_detalles"
+        awk -F'\t' -v raiz="$RAIZ_PROYECTO/" '$2 == "CRITICAL" { ruta=$3; gsub(raiz, "", ruta); printf " - %s | %s | %s\n", $1, ruta, $6 }' "$archivo_filtrado" | head -n "$maximo_detalles"
     else
         echo " - No se registraron alertas criticas."
     fi

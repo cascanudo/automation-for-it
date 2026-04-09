@@ -103,7 +103,7 @@ for ruta_origen in "${FUENTES_RESPALDO[@]}"; do
     nombre_origen=$(echo "$nombre_origen" | sed 's/[^a-zA-Z0-9._-]/_/g')
 
     if [[ ! -d "$ruta_origen" ]]; then
-        registrar_advertencia "Se omite $ruta_origen porque no existe o no es una carpeta."
+        registrar_advertencia "Se omite $(ruta_corta "$ruta_origen") porque no existe o no es una carpeta."
         printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$fecha_ejecucion" "$etiqueta_lote" "$ruta_origen" "-" "0" "0" "-" "OMITIDO" >> "$ARCHIVO_HISTORIAL_RESPALDOS"
         cantidad_omitidas=$((cantidad_omitidas + 1))
         continue
@@ -135,18 +135,18 @@ archivo_envio=$(simular_envio_reporte "reporte-respaldo-$id_actual" "$CORREO_DES
     imprimir_dato "Proyecto" "$NOMBRE_PROYECTO"
     imprimir_dato "Fecha de ejecucion" "$fecha_ejecucion"
     imprimir_dato "Etiqueta del lote" "$etiqueta_lote"
-    imprimir_dato "Carpeta del lote" "$carpeta_lote"
+    imprimir_dato "Carpeta del lote" "$(ruta_corta "$carpeta_lote")"
     imprimir_dato "Fuentes evaluadas" "${#FUENTES_RESPALDO[@]}"
     imprimir_dato "Paquetes generados" "$cantidad_paquetes"
     imprimir_dato "Archivos respaldados" "$cantidad_archivos"
     imprimir_dato "Tamano total" "$bytes_totales bytes"
     imprimir_dato "Fuentes correctas" "$cantidad_ok"
     imprimir_dato "Fuentes omitidas" "$cantidad_omitidas"
-    imprimir_dato "Registro de envio" "$archivo_envio"
+    imprimir_dato "Registro de envio" "$(ruta_corta "$archivo_envio")"
     echo
     echo "Detalle por carpeta:"
     if [[ -s "$archivo_manifiesto" ]]; then
-        awk -F'\t' '{ printf " - %s => %s | archivos=%s | bytes=%s\n", $1, $2, $3, $4 }' "$archivo_manifiesto"
+        awk -F'\t' -v raiz="$RAIZ_PROYECTO/" '{ gsub(raiz, "", $1); gsub(raiz, "", $2); printf " - %s => %s | archivos=%s | bytes=%s\n", $1, $2, $3, $4 }' "$archivo_manifiesto"
     else
         echo " - No se generaron respaldos en esta ejecucion."
     fi
