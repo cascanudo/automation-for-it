@@ -51,9 +51,50 @@ EOF
     esac
 done
 
+echo ""
+echo "============================================================"
+echo "  PROYECTO FINAL DE AUTOMATIZACION EN SHELL"
+echo "  Escenario: $escenario_demo | Roles: $alcance_roles"
+echo "============================================================"
+
+echo ""
+echo "------------------------------------------------------------"
+echo "  PASO 1/6: Preparando entorno de prueba..."
+echo "------------------------------------------------------------"
 bash "$CARPETA_SCRIPT/preparar_entorno_prueba.sh" --config "$archivo_config" --escenario "$escenario_demo"
+
+echo ""
+echo "------------------------------------------------------------"
+echo "  PASO 2/6: Ejecutando copias de seguridad..."
+echo "------------------------------------------------------------"
 bash "$CARPETA_SCRIPT/copias_seguridad.sh" --config "$archivo_config" --etiqueta "$etiqueta_respaldo"
+
+echo ""
+echo "------------------------------------------------------------"
+echo "  PASO 3/6: Ejecutando monitoreo de logs..."
+echo "------------------------------------------------------------"
 bash "$CARPETA_SCRIPT/monitorear_logs.sh" --config "$archivo_config" --modo completo --lineas 500 || true
+
+echo ""
+echo "------------------------------------------------------------"
+echo "  PASO 4/6: Gestionando usuarios y roles..."
+echo "------------------------------------------------------------"
 bash "$CARPETA_SCRIPT/gestionar_roles.sh" --config "$archivo_config" --alcance "$alcance_roles" --aplicar
+
+echo ""
+echo "------------------------------------------------------------"
+echo "  PASO 5/6: Generando reporte diario de monitoreo..."
+echo "------------------------------------------------------------"
 bash "$CARPETA_SCRIPT/generar_reporte_logs.sh" --config "$archivo_config" --con-respaldo
+
+echo ""
+echo "------------------------------------------------------------"
+echo "  PASO 6/6: Generando reporte maestro..."
+echo "------------------------------------------------------------"
 bash "$CARPETA_SCRIPT/generar_reporte_maestro.sh" --config "$archivo_config" --con-bundle
+
+echo ""
+echo "============================================================"
+echo "  PROYECTO COMPLETADO - Todos los modulos ejecutados"
+echo "  Revisa la carpeta 'reportes/' para ver los resultados."
+echo "============================================================"
