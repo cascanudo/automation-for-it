@@ -30,3 +30,6 @@ Thumbs.db
 
 # Temporales de Office (abrir el informe genera estos)
 ~$*
+
+# Documento interno del grupo (no se publica)
+GUION_EXPOSICION.md
