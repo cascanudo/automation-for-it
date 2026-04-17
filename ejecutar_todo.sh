@@ -1,100 +1,83 @@
 #!/usr/bin/env bash
-# ============================================================
 # ejecutar_todo.sh
-# Ejecuta el proyecto completo de principio a fin
-# Proyecto Final - Shell Scripting - IDAT 2026-I
-# Grupo: Santos, Juarez, Chavez, Taboada
-# ============================================================
-# Este script corre todos los modulos en orden: primero prepara
-# el entorno de prueba, despues hace los respaldos, el monitoreo,
-# la gestion de roles y al final genera los reportes.
-# Es lo que usamos para validar todo antes de sustentar.
+# Orquesta todos los modulos de punta a punta. Es el script que usamos
+# para validar el proyecto antes de sustentar.
+#
+# Pasos: preparar -> respaldo -> monitoreo -> roles -> reporte diario
+#         -> reporte maestro.
 
 set -euo pipefail
 IFS=$'\n\t'
 
-CARPETA_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-archivo_config="$CARPETA_SCRIPT/configuracion/proyecto_final.conf"
-escenario_demo="mixto"
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC1091
+source "$HERE/biblioteca/comun.sh"
+
+archivo_config="$HERE/configuracion/proyecto_final.conf"
+escenario="mixto"
 alcance_roles="laboratorio"
-etiqueta_respaldo="integral"
+etiqueta="integral"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --escenario)
-            escenario_demo=$2
-            shift 2
-            ;;
-        --alcance-roles)
-            alcance_roles=$2
-            shift 2
-            ;;
-        --etiqueta)
-            etiqueta_respaldo=$2
-            shift 2
-            ;;
-        --config)
-            archivo_config=$2
-            shift 2
-            ;;
+        --escenario)     escenario=$2; shift 2 ;;
+        --alcance-roles) alcance_roles=$2; shift 2 ;;
+        --etiqueta)      etiqueta=$2; shift 2 ;;
+        --config)        archivo_config=$2; shift 2 ;;
         --help|-h)
             cat <<'EOF'
-Uso:
-  ./ejecutar_todo.sh [--escenario base|critico|mixto] [--alcance-roles laboratorio|sistema|auto] [--etiqueta nombre]
+uso: ejecutar_todo.sh [--escenario base|critico|mixto]
+                      [--alcance-roles laboratorio|sistema|auto]
+                      [--etiqueta nombre] [--config ruta]
 EOF
             exit 0
             ;;
-        *)
-            echo "Parametro no reconocido: $1" >&2
-            exit 1
-            ;;
+        *) echo "parametro no reconocido: $1" >&2; exit 1 ;;
     esac
 done
 
-echo ""
-echo "============================================================"
+paso() {
+    local num=$1; shift
+    echo
+    imprimir_separador
+    echo "  PASO $num/6: $*"
+    imprimir_separador
+}
+
+echo
+imprimir_separador
 echo "  PROYECTO FINAL DE AUTOMATIZACION EN SHELL"
-echo "  Escenario: $escenario_demo | Roles: $alcance_roles"
-echo "============================================================"
+echo "  Escenario: $escenario | Roles: $alcance_roles | Etiqueta: $etiqueta"
+imprimir_separador
 
-echo ""
-echo "------------------------------------------------------------"
-echo "  PASO 1/6: Preparando entorno de prueba..."
-echo "------------------------------------------------------------"
-bash "$CARPETA_SCRIPT/preparar_entorno_prueba.sh" --config "$archivo_config" --escenario "$escenario_demo"
+paso 1 "preparando entorno de prueba"
+bash "$HERE/preparar_entorno_prueba.sh" --config "$archivo_config" --escenario "$escenario"
 
-echo ""
-echo "------------------------------------------------------------"
-echo "  PASO 2/6: Ejecutando copias de seguridad..."
-echo "------------------------------------------------------------"
-bash "$CARPETA_SCRIPT/copias_seguridad.sh" --config "$archivo_config" --etiqueta "$etiqueta_respaldo"
+paso 2 "copias de seguridad"
+bash "$HERE/copias_seguridad.sh" --config "$archivo_config" --etiqueta "$etiqueta"
 
-echo ""
-echo "------------------------------------------------------------"
-echo "  PASO 3/6: Ejecutando monitoreo de logs..."
-echo "------------------------------------------------------------"
-bash "$CARPETA_SCRIPT/monitorear_logs.sh" --config "$archivo_config" --modo completo --lineas 500 || true
+paso 3 "monitoreo de logs"
+# El monitoreo devuelve exit 2 si encuentra criticas; eso NO es un error
+# del script sino una senal para otros procesos. Lo capturamos a proposito.
+codigo_monitoreo=0
+bash "$HERE/monitorear_logs.sh" --config "$archivo_config" --modo completo --lineas 500 \
+    || codigo_monitoreo=$?
+if (( codigo_monitoreo == 2 )); then
+    registrar_advertencia "monitoreo reporto alertas criticas (esperado en escenarios critico/mixto)"
+elif (( codigo_monitoreo != 0 )); then
+    terminar_con_error "monitoreo fallo con codigo $codigo_monitoreo"
+fi
 
-echo ""
-echo "------------------------------------------------------------"
-echo "  PASO 4/6: Gestionando usuarios y roles..."
-echo "------------------------------------------------------------"
-bash "$CARPETA_SCRIPT/gestionar_roles.sh" --config "$archivo_config" --alcance "$alcance_roles" --aplicar
+paso 4 "gestion de usuarios y roles"
+bash "$HERE/gestionar_roles.sh" --config "$archivo_config" --alcance "$alcance_roles" --aplicar
 
-echo ""
-echo "------------------------------------------------------------"
-echo "  PASO 5/6: Generando reporte diario de monitoreo..."
-echo "------------------------------------------------------------"
-bash "$CARPETA_SCRIPT/generar_reporte_logs.sh" --config "$archivo_config" --con-respaldo
+paso 5 "reporte diario de monitoreo"
+bash "$HERE/generar_reporte_logs.sh" --config "$archivo_config" --con-respaldo
 
-echo ""
-echo "------------------------------------------------------------"
-echo "  PASO 6/6: Generando reporte maestro..."
-echo "------------------------------------------------------------"
-bash "$CARPETA_SCRIPT/generar_reporte_maestro.sh" --config "$archivo_config" --con-bundle
+paso 6 "reporte maestro"
+bash "$HERE/generar_reporte_maestro.sh" --config "$archivo_config" --con-bundle
 
-echo ""
-echo "============================================================"
-echo "  PROYECTO COMPLETADO - Todos los modulos ejecutados"
-echo "  Revisa la carpeta 'reportes/' para ver los resultados."
-echo "============================================================"
+echo
+imprimir_separador
+echo "  PROYECTO COMPLETADO - revisa la carpeta 'reportes/'"
+imprimir_separador
