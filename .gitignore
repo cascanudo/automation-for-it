@@ -1,4 +1,4 @@
-# Carpetas que se generan al ejecutar el proyecto
+# Artefactos que se generan al correr el proyecto
 respaldos/*
 reportes/*
 estado/*
@@ -7,7 +7,7 @@ laboratorio/*
 temporal/*
 logs_prueba/*.log
 
-# Conservamos las carpetas vacias con .gitkeep
+# Mantenemos las carpetas presentes con .gitkeep
 !respaldos/.gitkeep
 !reportes/.gitkeep
 !estado/.gitkeep
@@ -18,5 +18,15 @@ logs_prueba/*.log
 !temporal/.gitkeep
 !logs_prueba/.gitkeep
 
-# Archivos de estado que no deben subirse
+# Estados de monitoreo
 estado/checkpoints/*.estado
+
+# Editores / SO
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Temporales de Office (abrir el informe genera estos)
+~$*
