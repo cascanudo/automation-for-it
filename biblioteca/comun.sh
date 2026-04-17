@@ -1,150 +1,121 @@
 #!/usr/bin/env bash
+# biblioteca/comun.sh
+# Funciones compartidas, rutas base y carga de configuracion.
 
 set -euo pipefail
-
-# ============================================================
-# comun.sh - Biblioteca comun del proyecto
-# Funciones compartidas, validaciones y rutas base
-# Proyecto Final - Shell Scripting - IDAT 2026-I
-# Grupo: Santos, Juarez, Chavez, Taboada
-# ============================================================
 
 RAIZ_PROYECTO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ARCHIVO_CONFIG_PREDETERMINADO="$RAIZ_PROYECTO/configuracion/proyecto_final.conf"
 
-# --- Funciones de registro (logs internos del proyecto) ---
+# -------- logging --------
 
-marca_tiempo() {
-    date "+%Y-%m-%d %H:%M:%S"
-}
+marca_tiempo() { date "+%Y-%m-%d %H:%M:%S"; }
 
-registrar_info() {
-    printf '[%s] [INFO] %s\n' "$(marca_tiempo)" "$*"
-}
-
-registrar_advertencia() {
-    printf '[%s] [ADVERTENCIA] %s\n' "$(marca_tiempo)" "$*" >&2
-}
-
-registrar_error() {
-    printf '[%s] [ERROR] %s\n' "$(marca_tiempo)" "$*" >&2
-}
+registrar_info()        { printf '[%s] [INFO] %s\n' "$(marca_tiempo)" "$*"; }
+registrar_advertencia() { printf '[%s] [WARN] %s\n' "$(marca_tiempo)" "$*" >&2; }
+registrar_error()       { printf '[%s] [ERROR] %s\n' "$(marca_tiempo)" "$*" >&2; }
 
 terminar_con_error() {
     registrar_error "$*"
     exit 1
 }
 
-# --- Funciones de validacion y comprobacion ---
-
-asegurar_directorio() {
-    mkdir -p "$1"
+# Trampa de errores opcional: cada script principal puede activarla con
+# activar_trampa_errores para que un fallo inesperado muestre el contexto.
+activar_trampa_errores() {
+    trap 'registrar_error "fallo en ${BASH_SOURCE[1]:-script}:${LINENO} (codigo $?)"' ERR
 }
 
+# -------- validaciones --------
+
+asegurar_directorio() { mkdir -p "$1"; }
+
 exigir_archivo_lectura() {
-    local archivo=$1
-    [[ -f "$archivo" ]] || terminar_con_error "No existe el archivo requerido: $archivo"
-    [[ -r "$archivo" ]] || terminar_con_error "No se puede leer el archivo requerido: $archivo"
+    local f=$1
+    [[ -f "$f" ]] || terminar_con_error "no existe el archivo: $f"
+    [[ -r "$f" ]] || terminar_con_error "no se puede leer: $f"
 }
 
 exigir_comando() {
-    local nombre_comando=$1
-    command -v "$nombre_comando" >/dev/null 2>&1 || terminar_con_error "No se encontro el comando requerido: $nombre_comando"
+    command -v "$1" >/dev/null 2>&1 || terminar_con_error "falta el comando: $1"
 }
 
-comando_disponible() {
-    command -v "$1" >/dev/null 2>&1
-}
+comando_disponible() { command -v "$1" >/dev/null 2>&1; }
 
-# --- Funciones auxiliares de texto y formato ---
+# -------- auxiliares de texto --------
 
+# Reemplaza caracteres problematicos por guion bajo usando expansion pura de bash.
 nombre_seguro() {
-    local valor=$1
-    valor=${valor//\//_}
-    valor=${valor//\\/_}
-    valor=${valor// /_}
-    valor=${valor//:/_}
-    printf '%s' "$valor"
+    local v=$1
+    v=${v//\//_}
+    v=${v//\\/_}
+    v=${v// /_}
+    v=${v//:/_}
+    printf '%s' "$v"
 }
 
-# Limpia una ruta quitando barras repetidas o puntos innecesarios.
-normalizar_ruta() {
-    local ruta=$1
-    ruta=$(echo "$ruta" | sed 's|/\+|/|g; s|/\./|/|g; s|/$||')
-    printf '%s' "$ruta"
-}
-
-# Muestra la ruta relativa al proyecto para que la salida sea mas corta y legible.
+# Muestra una ruta relativa a la raiz del proyecto. Si no empieza con la raiz
+# la devuelve tal cual.
 ruta_corta() {
-    local ruta=$1
-    echo "$ruta" | sed "s|$RAIZ_PROYECTO/||g; s|$RAIZ_PROYECTO||g"
+    local r=$1
+    if [[ "$r" == "$RAIZ_PROYECTO"* ]]; then
+        printf '%s' "${r#$RAIZ_PROYECTO/}"
+    else
+        printf '%s' "$r"
+    fi
 }
 
-# Imprime un banner grande para separar visualmente cada modulo en la salida.
-imprimir_banner() {
-    local titulo=$1
-    echo ""
-    echo "************************************************************"
-    echo "  $titulo"
-    echo "************************************************************"
-    echo ""
-}
-
-id_ejecucion() {
-    date "+%Y%m%d_%H%M%S"
-}
-
-fecha_actual() {
-    date "+%Y-%m-%d"
-}
+id_ejecucion() { date "+%Y%m%d_%H%M%S"; }
+fecha_actual() { date "+%Y-%m-%d"; }
 
 contar_lineas() {
-    local archivo=$1
-    if [[ -f "$archivo" ]]; then
-        wc -l < "$archivo" | tr -d '[:space:]'
+    local f=$1
+    if [[ -f "$f" ]]; then
+        wc -l < "$f" | tr -d '[:space:]'
     else
         printf '0'
     fi
 }
 
 imprimir_separador() {
-    printf '%s\n' "============================================================"
+    printf -- '------------------------------------------------------------\n'
 }
 
-imprimir_dato() {
-    printf '%-28s %s\n' "$1" "$2"
+imprimir_dato() { printf '%-28s %s\n' "$1" "$2"; }
+
+es_si() {
+    local v=${1,,}
+    [[ "$v" == "1" || "$v" == "true" || "$v" == "yes" || "$v" == "si" ]]
 }
 
-es_verdadero() {
-    local valor=${1,,}
-    [[ "$valor" == "1" || "$valor" == "true" || "$valor" == "yes" || "$valor" == "si" ]]
-}
+# Compatibilidad con la version anterior: algunos scripts todavia usan es_verdadero.
+es_verdadero() { es_si "$@"; }
 
-ejecutando_como_root() {
-    [[ "$(id -u)" -eq 0 ]]
-}
+ejecutando_como_root() { [[ "$(id -u)" -eq 0 ]]; }
 
 calcular_hash() {
-    local archivo=$1
-
+    local f=$1
     if comando_disponible sha256sum; then
-        sha256sum "$archivo" | awk '{print $1}'
+        sha256sum "$f" | awk '{print $1}'
     elif comando_disponible shasum; then
-        shasum -a 256 "$archivo" | awk '{print $1}'
+        shasum -a 256 "$f" | awk '{print $1}'
     else
-        cksum "$archivo" | awk '{print $1 "-" $2}'
+        # Ultimo recurso: cksum no es criptografico pero al menos detecta corrupcion.
+        cksum "$f" | awk '{print $1 "-" $2}'
     fi
 }
 
+# Escribe un registro del envio del reporte en el buzon. No envia correo real,
+# deja evidencia del intento (simulacion aprobada por el docente en la sesion 10).
 simular_envio_reporte() {
     local asunto=$1
     local destinatario=$2
     local archivo_reporte=$3
     local canal=${4:-archivo}
-    local archivo_salida
+    local salida
 
     asegurar_directorio "$CARPETA_BUZON"
-    archivo_salida="$CARPETA_BUZON/envio_$(nombre_seguro "$asunto")_$(id_ejecucion).txt"
+    salida="$CARPETA_BUZON/envio_$(nombre_seguro "$asunto")_$(id_ejecucion).txt"
 
     {
         imprimir_separador
@@ -155,12 +126,12 @@ simular_envio_reporte() {
         imprimir_dato "Destinatario" "$destinatario"
         imprimir_dato "Asunto" "$asunto"
         imprimir_dato "Adjunto" "$archivo_reporte"
-    } > "$archivo_salida"
+    } > "$salida"
 
-    printf '%s\n' "$archivo_salida"
+    printf '%s\n' "$salida"
 }
 
-# --- Carga de configuracion y arranque del entorno ---
+# -------- configuracion --------
 
 cargar_configuracion() {
     local archivo_config=${1:-$ARCHIVO_CONFIG_PREDETERMINADO}
@@ -202,36 +173,47 @@ cargar_configuracion() {
 }
 
 inicializar_entorno() {
-    asegurar_directorio "$CARPETA_REPORTES"
-    asegurar_directorio "$CARPETA_ESTADO"
-    asegurar_directorio "$CARPETA_RESPALDOS"
-    asegurar_directorio "$CARPETA_TEMPORAL"
-    asegurar_directorio "$CARPETA_CHECKPOINTS"
-    asegurar_directorio "$CARPETA_BUZON"
-    asegurar_directorio "$CARPETA_LABORATORIO"
-    asegurar_directorio "$CARPETA_ROLES_LAB"
-    asegurar_directorio "$CARPETA_USUARIOS_LAB"
+    local d
+    for d in "$CARPETA_REPORTES" "$CARPETA_ESTADO" "$CARPETA_RESPALDOS" \
+             "$CARPETA_TEMPORAL" "$CARPETA_CHECKPOINTS" "$CARPETA_BUZON" \
+             "$CARPETA_LABORATORIO" "$CARPETA_ROLES_LAB" "$CARPETA_USUARIOS_LAB"; do
+        asegurar_directorio "$d"
+    done
 
-    touch "$ARCHIVO_HISTORIAL_ALERTAS"
-    touch "$ARCHIVO_HISTORIAL_RESPALDOS"
-    touch "$ARCHIVO_HISTORIAL_USUARIOS"
+    # Validacion util cuando alguien cambia el proyecto de ubicacion y deja
+    # CARPETA_REPORTES apuntando a una ruta que no es escribible.
+    [[ -w "$CARPETA_REPORTES" ]] || terminar_con_error "la carpeta de reportes no es escribible: $CARPETA_REPORTES"
+
+    touch "$ARCHIVO_HISTORIAL_ALERTAS" \
+          "$ARCHIVO_HISTORIAL_RESPALDOS" \
+          "$ARCHIVO_HISTORIAL_USUARIOS"
 }
 
 archivo_checkpoint() {
-    local ruta_fuente=$1
-    printf '%s/%s.estado\n' "$CARPETA_CHECKPOINTS" "$(nombre_seguro "$ruta_fuente")"
+    printf '%s/%s.estado\n' "$CARPETA_CHECKPOINTS" "$(nombre_seguro "$1")"
 }
 
+# Decide entre laboratorio y sistema. "auto" usa sistema solo si corresponde.
 resolver_alcance_roles() {
-    local alcance_solicitado=${1:-$ALCANCE_ROLES_PREDETERMINADO}
+    local solicitado=${1:-$ALCANCE_ROLES_PREDETERMINADO}
 
-    if [[ "$alcance_solicitado" == "auto" ]]; then
+    if [[ "$solicitado" == "auto" ]]; then
         if ejecutando_como_root && comando_disponible useradd && comando_disponible groupadd; then
             printf 'sistema\n'
         else
             printf 'laboratorio\n'
         fi
     else
-        printf '%s\n' "$alcance_solicitado"
+        printf '%s\n' "$solicitado"
+    fi
+}
+
+# Limpia CRLF de archivos que vienen de Windows. Lo llamamos antes de leer
+# los TSV porque ya nos paso mas de una vez que Git Bash los guarde con \r.
+sanear_crlf() {
+    local f=$1
+    [[ -f "$f" && -w "$f" ]] || return 0
+    if grep -q $'\r' "$f" 2>/dev/null; then
+        sed -i 's/\r$//' "$f"
     fi
 }
