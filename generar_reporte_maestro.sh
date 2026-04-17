@@ -1,163 +1,137 @@
 #!/usr/bin/env bash
-# ============================================================
 # generar_reporte_maestro.sh
-# Reporte maestro que consolida los tres modulos del proyecto
-# Proyecto Final - Shell Scripting - IDAT 2026-I
-# Grupo: Santos, Juarez, Chavez, Taboada
-# ============================================================
-# Este script junta la evidencia de respaldos, monitoreo y
-# gestion de usuarios en un solo reporte. Es el que presentamos
-# al final para demostrar que todo funciono correctamente.
+#
+# Consolida la evidencia de los 3 modulos (respaldos, monitoreo, roles)
+# en un solo reporte ejecutivo. Opcionalmente arma un tar.gz con los
+# reportes mas recientes y deja un registro del envio.
 
 set -euo pipefail
 IFS=$'\n\t'
 
-CARPETA_SCRIPT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck disable=SC1091
-source "$CARPETA_SCRIPT/biblioteca/comun.sh"
+source "$HERE/biblioteca/comun.sh"
 
-mostrar_ayuda() {
+activar_trampa_errores
+
+ayuda() {
     cat <<'EOF'
-Uso:
-  ./generar_reporte_maestro.sh [--config ruta] [--fecha YYYY-MM-DD] [--con-bundle]
-
-Opciones:
-  --config      Archivo de configuracion del proyecto.
-  --fecha       Fecha a consolidar.
-  --con-bundle  Empaqueta los reportes mas recientes en un solo archivo.
-  --help        Muestra esta ayuda.
+uso: generar_reporte_maestro.sh [--config ruta] [--fecha YYYY-MM-DD] [--con-bundle]
 EOF
 }
 
 archivo_config="$ARCHIVO_CONFIG_PREDETERMINADO"
-fecha_objetivo=""
-crear_bundle=false
+fecha=""
+con_bundle=false
 
-# Juntamos toda la informacion del proyecto para cerrar con una evidencia clara y completa.
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --config)
-            archivo_config=$2
-            shift 2
-            ;;
-        --fecha)
-            fecha_objetivo=$2
-            shift 2
-            ;;
-        --con-bundle)
-            crear_bundle=true
-            shift
-            ;;
-        --help|-h)
-            mostrar_ayuda
-            exit 0
-            ;;
-        *)
-            terminar_con_error "Parametro no reconocido: $1"
-            ;;
+        --config)     archivo_config=$2; shift 2 ;;
+        --fecha)      fecha=$2; shift 2 ;;
+        --con-bundle) con_bundle=true; shift ;;
+        --help|-h)    ayuda; exit 0 ;;
+        *) terminar_con_error "parametro invalido: $1" ;;
     esac
 done
 
 cargar_configuracion "$archivo_config"
 inicializar_entorno
 
-# Para este punto los modulos ya corrieron, asi que solo necesitamos las herramientas de filtrado.
 exigir_comando awk
 exigir_comando grep
 exigir_comando tar
 
-fecha_objetivo=${fecha_objetivo:-$(fecha_actual)}
-archivo_maestro="$CARPETA_REPORTES/reporte_maestro_${fecha_objetivo}.txt"
-archivo_maestro_reciente="$CARPETA_REPORTES/ultimo_reporte_maestro.txt"
-archivo_logs_dia="$CARPETA_TEMPORAL/maestro_logs_${fecha_objetivo}.tsv"
-archivo_respaldos_dia="$CARPETA_TEMPORAL/maestro_respaldos_${fecha_objetivo}.tsv"
-archivo_usuarios_dia="$CARPETA_TEMPORAL/maestro_usuarios_${fecha_objetivo}.tsv"
+fecha=${fecha:-$(fecha_actual)}
 
-reporte_respaldo_reciente="$CARPETA_REPORTES/ultimo_reporte_respaldos.txt"
-reporte_logs_reciente="$CARPETA_REPORTES/ultimo_reporte_logs.txt"
-reporte_usuarios_reciente="$CARPETA_REPORTES/ultimo_reporte_usuarios.txt"
+archivo_maestro="$CARPETA_REPORTES/reporte_maestro_${fecha}.txt"
+archivo_maestro_ultimo="$CARPETA_REPORTES/ultimo_reporte_maestro.txt"
 
-# Filtramos el historial para quedarnos solo con lo que paso en la fecha que estamos evaluando.
-grep "^$fecha_objetivo" "$ARCHIVO_HISTORIAL_ALERTAS" > "$archivo_logs_dia" || true
-grep "^$fecha_objetivo" "$ARCHIVO_HISTORIAL_RESPALDOS" > "$archivo_respaldos_dia" || true
-grep "^$fecha_objetivo" "$ARCHIVO_HISTORIAL_USUARIOS" > "$archivo_usuarios_dia" || true
+logs_dia="$CARPETA_TEMPORAL/maestro_logs_${fecha}.tsv"
+respaldos_dia="$CARPETA_TEMPORAL/maestro_respaldos_${fecha}.tsv"
+usuarios_dia="$CARPETA_TEMPORAL/maestro_usuarios_${fecha}.tsv"
 
-# Con estos numeros armamos el resumen ejecutivo que mostramos al sustentar.
-cantidad_logs=$(contar_lineas "$archivo_logs_dia")
-logs_criticos=$(awk -F'\t' '$2 == "CRITICAL" { n++ } END { print n + 0 }' "$archivo_logs_dia")
-cantidad_respaldos=$(contar_lineas "$archivo_respaldos_dia")
-respaldos_ok=$(awk -F'\t' '$8 == "OK" { n++ } END { print n + 0 }' "$archivo_respaldos_dia")
-cantidad_usuarios=$(contar_lineas "$archivo_usuarios_dia")
-usuarios_ok=$(awk -F'\t' '$7 == "OK" { n++ } END { print n + 0 }' "$archivo_usuarios_dia")
+rep_respaldos="$CARPETA_REPORTES/ultimo_reporte_respaldos.txt"
+rep_logs="$CARPETA_REPORTES/ultimo_reporte_logs.txt"
+rep_usuarios="$CARPETA_REPORTES/ultimo_reporte_usuarios.txt"
+
+grep "^$fecha" "$ARCHIVO_HISTORIAL_ALERTAS"   > "$logs_dia"      || true
+grep "^$fecha" "$ARCHIVO_HISTORIAL_RESPALDOS" > "$respaldos_dia" || true
+grep "^$fecha" "$ARCHIVO_HISTORIAL_USUARIOS"  > "$usuarios_dia"  || true
+
+n_logs=$(contar_lineas "$logs_dia")
+n_logs_crit=$(awk -F'\t' '$2 == "CRITICAL" {n++} END {print n + 0}' "$logs_dia")
+n_resp=$(contar_lineas "$respaldos_dia")
+n_resp_ok=$(awk -F'\t' '$8 == "OK" {n++} END {print n + 0}' "$respaldos_dia")
+n_usr=$(contar_lineas "$usuarios_dia")
+n_usr_ok=$(awk -F'\t' '$7 == "OK" {n++} END {print n + 0}' "$usuarios_dia")
 
 {
     imprimir_separador
     echo "REPORTE MAESTRO DEL PROYECTO FINAL"
     imprimir_separador
-    imprimir_dato "Proyecto" "$NOMBRE_PROYECTO"
-    imprimir_dato "Fecha evaluada" "$fecha_objetivo"
-    imprimir_dato "Entorno" "$NOMBRE_ENTORNO"
+    imprimir_dato "Proyecto"       "$NOMBRE_PROYECTO"
+    imprimir_dato "Fecha evaluada" "$fecha"
+    imprimir_dato "Entorno"        "$NOMBRE_ENTORNO"
     echo
 
     echo "1. Resumen ejecutivo"
-    echo " - Respaldos generados: $cantidad_respaldos"
-    echo " - Eventos de monitoreo: $cantidad_logs"
-    echo " - Eventos criticos: $logs_criticos"
-    echo " - Operaciones de usuarios y roles: $cantidad_usuarios"
+    echo " - Respaldos generados: $n_resp"
+    echo " - Eventos de monitoreo: $n_logs"
+    echo " - Eventos criticos: $n_logs_crit"
+    echo " - Operaciones de usuarios y roles: $n_usr"
     echo
 
     echo "2. Estado de cada modulo"
-    if (( cantidad_respaldos > 0 )); then
-        echo " - Copias de seguridad: operativas ($respaldos_ok/$cantidad_respaldos registros correctos)."
+    if (( n_resp > 0 )); then
+        echo " - Copias de seguridad: operativas ($n_resp_ok/$n_resp registros OK)"
     else
-        echo " - Copias de seguridad: sin ejecucion registrada para la fecha revisada."
+        echo " - Copias de seguridad: sin ejecucion registrada para la fecha"
     fi
-    if (( cantidad_logs > 0 )); then
-        echo " - Monitoreo de logs: hubo actividad y ya existe evidencia consolidada."
+    if (( n_logs > 0 )); then
+        echo " - Monitoreo de logs: hubo actividad y ya existe evidencia consolidada"
     else
-        echo " - Monitoreo de logs: no se detectaron eventos en la fecha evaluada."
+        echo " - Monitoreo de logs: sin eventos en la fecha"
     fi
-    if (( cantidad_usuarios > 0 )); then
-        echo " - Usuarios y roles: gestion procesada correctamente ($usuarios_ok/$cantidad_usuarios operaciones OK)."
+    if (( n_usr > 0 )); then
+        echo " - Usuarios y roles: gestion procesada ($n_usr_ok/$n_usr operaciones OK)"
     else
-        echo " - Usuarios y roles: sin operaciones registradas ese dia."
+        echo " - Usuarios y roles: sin operaciones registradas"
     fi
     echo
 
     echo "3. Evidencia principal"
-    [[ -f "$reporte_respaldo_reciente" ]] && echo " - Reporte de respaldos: $(ruta_corta "$reporte_respaldo_reciente")"
-    [[ -f "$reporte_logs_reciente" ]] && echo " - Reporte de monitoreo: $(ruta_corta "$reporte_logs_reciente")"
-    [[ -f "$reporte_usuarios_reciente" ]] && echo " - Reporte de usuarios: $(ruta_corta "$reporte_usuarios_reciente")"
+    [[ -f "$rep_respaldos" ]] && echo " - Reporte de respaldos: $(ruta_corta "$rep_respaldos")"
+    [[ -f "$rep_logs"      ]] && echo " - Reporte de monitoreo: $(ruta_corta "$rep_logs")"
+    [[ -f "$rep_usuarios"  ]] && echo " - Reporte de usuarios: $(ruta_corta "$rep_usuarios")"
     echo
 
     echo "4. Comentario final"
-    if (( cantidad_respaldos > 0 && cantidad_logs > 0 && cantidad_usuarios > 0 )); then
-echo " - El proyecto evidencia funcionamiento en los tres casos exigidos por el trabajo final."
+    if (( n_resp > 0 && n_logs > 0 && n_usr > 0 )); then
+        echo " - El proyecto evidencia funcionamiento en los tres casos exigidos"
     else
-        echo " - Falta completar evidencia de uno o mas modulos antes de la entrega definitiva."
+        echo " - Falta evidencia de uno o mas modulos antes de la entrega"
     fi
-    if (( logs_criticos > 0 )); then
-        echo " - Antes de sustentar, conviene explicar que los eventos criticos son parte del escenario de prueba controlado."
+    if (( n_logs_crit > 0 )); then
+        echo " - Los eventos criticos corresponden al escenario de prueba controlado"
     fi
 } > "$archivo_maestro"
 
-archivo_envio=$(simular_envio_reporte "reporte-maestro-$fecha_objetivo" "$CORREO_DESTINO_RESPALDO" "$archivo_maestro" "$CANAL_ENVIO_RESPALDO")
+envio=$(simular_envio_reporte "reporte-maestro-$fecha" "$CORREO_DESTINO_RESPALDO" "$archivo_maestro" "$CANAL_ENVIO_RESPALDO")
 
-if es_verdadero "$crear_bundle"; then
-    # El paquete final deja una sola evidencia ordenada para entrega o revision posterior.
-    archivo_bundle="$CARPETA_RESPALDOS/paquete_maestro_${fecha_objetivo}.tar.gz"
-    elementos_bundle=("reportes/$(basename "$archivo_maestro")")
-    [[ -f "$reporte_respaldo_reciente" ]] && elementos_bundle+=("reportes/$(basename "$reporte_respaldo_reciente")")
-    [[ -f "$reporte_logs_reciente" ]] && elementos_bundle+=("reportes/$(basename "$reporte_logs_reciente")")
-    [[ -f "$reporte_usuarios_reciente" ]] && elementos_bundle+=("reportes/$(basename "$reporte_usuarios_reciente")")
-    tar -czf "$archivo_bundle" -C "$RAIZ_PROYECTO" "${elementos_bundle[@]}"
+if es_si "$con_bundle"; then
+    bundle="$CARPETA_RESPALDOS/paquete_maestro_${fecha}.tar.gz"
+    items=("reportes/$(basename "$archivo_maestro")")
+    [[ -f "$rep_respaldos" ]] && items+=("reportes/$(basename "$rep_respaldos")")
+    [[ -f "$rep_logs"      ]] && items+=("reportes/$(basename "$rep_logs")")
+    [[ -f "$rep_usuarios"  ]] && items+=("reportes/$(basename "$rep_usuarios")")
+    tar -czf "$bundle" -C "$RAIZ_PROYECTO" "${items[@]}"
     echo >> "$archivo_maestro"
-    imprimir_dato "Paquete maestro" "$(ruta_corta "$archivo_bundle")" >> "$archivo_maestro"
+    imprimir_dato "Paquete maestro" "$(ruta_corta "$bundle")" >> "$archivo_maestro"
 fi
 
 echo >> "$archivo_maestro"
-imprimir_dato "Registro de envio" "$(ruta_corta "$archivo_envio")" >> "$archivo_maestro"
+imprimir_dato "Registro de envio" "$(ruta_corta "$envio")" >> "$archivo_maestro"
 
-cp "$archivo_maestro" "$archivo_maestro_reciente"
+cp "$archivo_maestro" "$archivo_maestro_ultimo"
 cat "$archivo_maestro"
-registrar_info "Reporte maestro generado correctamente."
+registrar_info "reporte maestro generado"
